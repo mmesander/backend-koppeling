@@ -4,12 +4,17 @@ package nu.revitalized.backendtemplate.controllers;
 import jakarta.validation.Valid;
 import nu.revitalized.backendtemplate.dtos.input.UserInputDto;
 import nu.revitalized.backendtemplate.dtos.output.UserDto;
+import nu.revitalized.backendtemplate.exceptions.InvalidInputException;
 import nu.revitalized.backendtemplate.services.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URI;
 import java.util.List;
+
+import static nu.revitalized.backendtemplate.helpers.BindingResultHelper.handleBindingResultError;
+import static nu.revitalized.backendtemplate.helpers.UriBuilder.buildUriWithUsername;
 
 @CrossOrigin
 @RestController
@@ -46,5 +51,31 @@ public class UserController {
         List<UserDto> dtos = userService.getUsersByFilter(username, email);
 
         return ResponseEntity.ok().body(dtos);
+    }
+
+    @PostMapping
+    public ResponseEntity<UserDto> createUser(
+            @Valid
+            @RequestBody UserInputDto inputDto,
+            BindingResult bindingResult
+    ) {
+        if (bindingResult.hasFieldErrors()) {
+            throw new InvalidInputException(handleBindingResultError(bindingResult));
+        } else {
+            UserDto dto = userService.createUser(inputDto);
+
+            URI uri = buildUriWithUsername(dto);
+
+            return ResponseEntity.created(uri).body(dto);
+        }
+    }
+
+    @DeleteMapping("/{username}")
+    public ResponseEntity<String> deleteUser(
+            @PathVariable("username") String username
+    ) {
+        String confirmation = userService.deleteUser(username);
+
+        return ResponseEntity.ok().body(confirmation);
     }
 }
