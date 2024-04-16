@@ -1,7 +1,6 @@
 package nu.revitalized.backendtemplate.services;
 
 // Imports
-
 import lombok.Getter;
 import lombok.Setter;
 import nu.revitalized.backendtemplate.dtos.input.UserInputDto;
@@ -13,11 +12,9 @@ import nu.revitalized.backendtemplate.exceptions.UsernameNotFoundException;
 import nu.revitalized.backendtemplate.models.User;
 import nu.revitalized.backendtemplate.repositories.UserRepository;
 import nu.revitalized.backendtemplate.specifications.UserSpecification;
-
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-
 import static nu.revitalized.backendtemplate.helpers.CopyProperties.copyProperties;
 
 @Getter
