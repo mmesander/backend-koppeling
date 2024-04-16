@@ -8,6 +8,10 @@ import nu.revitalized.backendtemplate.dtos.output.UserDto;
 import nu.revitalized.backendtemplate.models.User;
 import nu.revitalized.backendtemplate.repositories.UserRepository;
 
+import java.util.List;
+
+import static nu.revitalized.backendtemplate.helpers.CopyProperties.copyProperties;
+
 @Getter
 @Setter
 public class UserService {
@@ -31,6 +35,16 @@ public class UserService {
     }
 
     public UserDto userToDto(User user) {
+        UserDto userDto = new UserDto();
 
+        copyProperties(user, userDto);
+
+        return userDto;
+    }
+
+    // CRUD Methods
+    public List<UserDto> getUsers() {
+        List<User> users = userRepository.findAll();
+        List<UserDto>
     }
 }
