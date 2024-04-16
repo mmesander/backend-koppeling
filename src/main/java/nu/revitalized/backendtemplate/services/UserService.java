@@ -12,6 +12,8 @@ import nu.revitalized.backendtemplate.exceptions.UsernameNotFoundException;
 import nu.revitalized.backendtemplate.models.User;
 import nu.revitalized.backendtemplate.repositories.UserRepository;
 import nu.revitalized.backendtemplate.specifications.UserSpecification;
+import org.springframework.stereotype.Service;
+
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -19,6 +21,7 @@ import static nu.revitalized.backendtemplate.helpers.CopyProperties.copyProperti
 
 @Getter
 @Setter
+@Service
 public class UserService {
     private final UserRepository userRepository;
 
