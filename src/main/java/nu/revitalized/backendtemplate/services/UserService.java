@@ -43,8 +43,8 @@ public class UserService {
     }
 
     // CRUD Methods
-    public List<UserDto> getUsers() {
-        List<User> users = userRepository.findAll();
-        List<UserDto>
-    }
+//    public List<UserDto> getUsers() {
+//        List<User> users = userRepository.findAll();
+//        List<UserDto>
+//    }
 }
