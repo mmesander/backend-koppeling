@@ -1,6 +1,7 @@
 package nu.revitalized.backendtemplate.services;
 
 // Imports
+
 import lombok.Getter;
 import lombok.Setter;
 import nu.revitalized.backendtemplate.dtos.input.UserInputDto;
@@ -9,26 +10,31 @@ import nu.revitalized.backendtemplate.exceptions.BadRequestException;
 import nu.revitalized.backendtemplate.exceptions.InvalidInputException;
 import nu.revitalized.backendtemplate.exceptions.RecordNotFoundException;
 import nu.revitalized.backendtemplate.exceptions.UsernameNotFoundException;
+import nu.revitalized.backendtemplate.models.Authority;
 import nu.revitalized.backendtemplate.models.User;
+import nu.revitalized.backendtemplate.repositories.AuthorityRepository;
 import nu.revitalized.backendtemplate.repositories.UserRepository;
 import nu.revitalized.backendtemplate.specifications.UserSpecification;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
+
 import static nu.revitalized.backendtemplate.helpers.CopyProperties.copyProperties;
+import static nu.revitalized.backendtemplate.security.config.SpringSecurityConfig.passwordEncoder;
 
 @Getter
 @Setter
 @Service
 public class UserService {
     private final UserRepository userRepository;
+    private final AuthorityRepository authorityRepository;
 
     public UserService(
-            UserRepository userRepository
+            UserRepository userRepository,
+            AuthorityRepository authorityRepository
     ) {
         this.userRepository = userRepository;
+        this.authorityRepository = authorityRepository;
     }
 
     // Transfer Methods
@@ -36,7 +42,7 @@ public class UserService {
         User user = new User();
 
         user.setUsername(inputDto.getUsername().toLowerCase());
-        user.setPassword(inputDto.getPassword());
+        user.setPassword(passwordEncoder().encode(inputDto.getPassword()));
         user.setEmail(inputDto.getEmail());
 
         return user;
@@ -111,7 +117,7 @@ public class UserService {
         } else if (emailExists) {
             throw new InvalidInputException("Email:" + inputDto.getEmail().toLowerCase() + " is already taken");
         } else {
-            // user.addAuthority(new Authority(user.getUsername(), "ROLE_USER"));
+            user.addAuthority(new Authority(user.getUsername(), "ROLE_USER"));
             userRepository.save(user);
 
             return userToDto(user);
@@ -128,6 +134,71 @@ public class UserService {
 
         userRepository.deleteById(username);
 
-        return "User " + username + " is deleted";
+        return "User: " + username + " is deleted";
+    }
+
+    // Relation - Authorities Methods
+    public Set<Authority> getUserAuthorities(String username) {
+        User user = userRepository.findById(username)
+                .orElseThrow(() -> new UsernameNotFoundException(username));
+
+        UserDto userDto = userToDto(user);
+
+        return userDto.getAuthorities();
+    }
+
+    public UserDto assignAuthorityToUser(String username, String authority) {
+        User user = userRepository.findById(username)
+                .orElseThrow(() -> new UsernameNotFoundException(username));
+
+        Optional<Authority> optionalAuthority = authorityRepository.findAuthoritiesByAuthorityContainsIgnoreCaseAndUsernameIgnoreCase(username, authority);
+        UserDto userDto = null;
+
+        if (user != null && optionalAuthority.isPresent()) {
+            user.addAuthority(new Authority(username, authority));
+
+            userRepository.save(user);
+
+            userDto = userToDto(user);
+        }
+
+        return userDto;
+    }
+
+    public String removeAuthorityFromUser(String username, String authority) {
+        User user = userRepository.findById(username)
+                .orElseThrow(() -> new UsernameNotFoundException(username));
+
+        Authority toRemove = user.getAuthorities().stream()
+                .filter(a -> a.getAuthority().equalsIgnoreCase(authority))
+                .findFirst()
+                .orElseThrow(() -> new InvalidInputException("user: " + username + " does not have authority "
+                        + authority.toUpperCase()));
+
+        long count = 0;
+
+        if (toRemove.getUsername() != null) {
+            List<User> users = userRepository.findAll();
+
+            if (!users.isEmpty()) {
+                for (User user1 : users) {
+                    for (Authority checkAuthority : user1.getAuthorities()) {
+                        if (checkAuthority.getAuthority().equalsIgnoreCase(authority)) {
+                            count++;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (count <= 1) {
+            throw new BadRequestException("At least 1 user must have the authority: " + authority.toUpperCase());
+        } else {
+            user.removeAuthority(toRemove);
+            userRepository.save(user);
+
+            return "Authority " + authority.toUpperCase() + " is removed from user: " + username;
+        }
     }
 }
