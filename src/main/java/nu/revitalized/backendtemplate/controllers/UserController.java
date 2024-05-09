@@ -1,10 +1,14 @@
 package nu.revitalized.backendtemplate.controllers;
 
 // Imports
+
 import jakarta.validation.Valid;
+import nu.revitalized.backendtemplate.dtos.input.AuthorityInputDto;
 import nu.revitalized.backendtemplate.dtos.input.UserInputDto;
 import nu.revitalized.backendtemplate.dtos.output.UserDto;
+import nu.revitalized.backendtemplate.exceptions.BadRequestException;
 import nu.revitalized.backendtemplate.exceptions.InvalidInputException;
+import nu.revitalized.backendtemplate.models.Authority;
 import nu.revitalized.backendtemplate.services.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
@@ -12,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Set;
 
 import static nu.revitalized.backendtemplate.helpers.BindingResultHelper.handleBindingResultError;
 import static nu.revitalized.backendtemplate.helpers.UriBuilder.buildUriWithUsername;
@@ -77,5 +82,51 @@ public class UserController {
         String confirmation = userService.deleteUser(username);
 
         return ResponseEntity.ok().body(confirmation);
+    }
+
+    // ADMIN - Authority Requests
+    @GetMapping(value = "/{username}/authorities")
+    public ResponseEntity<Object> getUserAuthorities(
+            @PathVariable("username") String username
+    ) {
+        Set<Authority> authorities = userService.getUserAuthorities(username);
+
+        return ResponseEntity.ok().body(authorities);
+    }
+
+    @PutMapping(value = "/{username}/authorities")
+    public ResponseEntity<Object> assignAuthorityToUser(
+            @PathVariable("username") String username,
+            @Valid
+            @RequestBody AuthorityInputDto authorityInputDto,
+            BindingResult bindingResult
+    ) {
+        if (bindingResult.hasFieldErrors()) {
+            throw new InvalidInputException(handleBindingResultError(bindingResult));
+        } else {
+            try {
+                UserDto dto = userService.assignAuthorityToUser(username, authorityInputDto.getAuthority().toUpperCase());
+
+                return ResponseEntity.ok().body(dto);
+            } catch (Exception exception) {
+                throw new BadRequestException(exception.getMessage());
+            }
+        }
+    }
+
+    @DeleteMapping(value = "/{username}/authorities")
+    public ResponseEntity<Object> removeAuthorityFromUser(
+            @PathVariable("username") String username,
+            @Valid
+            @RequestBody AuthorityInputDto authorityInputDto,
+            BindingResult bindingResult
+    ) {
+        if (bindingResult.hasFieldErrors()) {
+            throw new InvalidInputException(handleBindingResultError(bindingResult));
+        } else {
+            String confirmation = userService.removeAuthorityFromUser(username, authorityInputDto.getAuthority());
+
+            return ResponseEntity.ok().body(confirmation);
+        }
     }
 }
