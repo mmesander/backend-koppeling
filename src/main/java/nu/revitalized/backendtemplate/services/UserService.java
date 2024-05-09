@@ -1,6 +1,7 @@
 package nu.revitalized.backendtemplate.services;
 
 // Imports
+
 import lombok.Getter;
 import lombok.Setter;
 import nu.revitalized.backendtemplate.dtos.input.UserInputDto;
@@ -133,7 +134,7 @@ public class UserService {
 
         userRepository.deleteById(username);
 
-        return "User " + username + " is deleted";
+        return "User: " + username + " is deleted";
     }
 
     // Relation - Authorities Methods
@@ -150,7 +151,7 @@ public class UserService {
         User user = userRepository.findById(username)
                 .orElseThrow(() -> new UsernameNotFoundException(username));
 
-        Optional<Authority> optionalAuthority = authorityRepository.findAuthoritiesByAuthorityContainsIgnoreCase(authority);
+        Optional<Authority> optionalAuthority = authorityRepository.findAuthoritiesByAuthorityContainsIgnoreCaseAndUsernameIgnoreCase(username, authority);
         UserDto userDto = null;
 
         if (user != null && optionalAuthority.isPresent()) {
@@ -168,15 +169,25 @@ public class UserService {
         User user = userRepository.findById(username)
                 .orElseThrow(() -> new UsernameNotFoundException(username));
 
-        Optional<Authority> optionalAuthority = authorityRepository.findAuthoritiesByAuthorityContainsIgnoreCase(authority);
+        Authority toRemove = user.getAuthorities().stream()
+                .filter(a -> a.getAuthority().equalsIgnoreCase(authority))
+                .findFirst()
+                .orElseThrow(() -> new InvalidInputException("user: " + username + " does not have authority "
+                        + authority.toUpperCase()));
 
-        List<User> users = userRepository.findAll();
-        int count = 0;
+        long count = 0;
 
-        if (!users.isEmpty() && optionalAuthority.isPresent()) {
-            for (User user1 : users) {
-                if (user1.getAuthorities().contains(optionalAuthority.get())) {
-                    count++;
+        if (toRemove.getUsername() != null) {
+            List<User> users = userRepository.findAll();
+
+            if (!users.isEmpty()) {
+                for (User user1 : users) {
+                    for (Authority checkAuthority : user1.getAuthorities()) {
+                        if (checkAuthority.getAuthority().equalsIgnoreCase(authority)) {
+                            count++;
+                            break;
+                        }
+                    }
                 }
             }
         }
@@ -184,12 +195,6 @@ public class UserService {
         if (count <= 1) {
             throw new BadRequestException("At least 1 user must have the authority: " + authority.toUpperCase());
         } else {
-            Authority toRemove = user.getAuthorities().stream()
-                    .filter(a -> a.getAuthority().equalsIgnoreCase(authority))
-                    .findFirst()
-                    .orElseThrow(() -> new InvalidInputException("user: " + username + " does not have authority "
-                            + authority.toUpperCase()));
-
             user.removeAuthority(toRemove);
             userRepository.save(user);
 
