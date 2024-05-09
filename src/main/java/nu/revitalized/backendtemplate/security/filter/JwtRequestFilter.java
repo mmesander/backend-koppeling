@@ -1,4 +1,4 @@
-package nu.revitalized.backendtemplate.security;
+package nu.revitalized.backendtemplate.security.filter;
 
 // Imports
 import jakarta.servlet.FilterChain;
