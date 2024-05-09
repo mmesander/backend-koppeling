@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import static nu.revitalized.backendtemplate.helpers.CopyProperties.copyProperties;
+import static nu.revitalized.backendtemplate.security.config.SpringSecurityConfig.passwordEncoder;
 
 @Getter
 @Setter
@@ -36,7 +37,7 @@ public class UserService {
         User user = new User();
 
         user.setUsername(inputDto.getUsername().toLowerCase());
-        user.setPassword(inputDto.getPassword());
+        user.setPassword(passwordEncoder().encode(inputDto.getPassword()));
         user.setEmail(inputDto.getEmail());
 
         return user;
