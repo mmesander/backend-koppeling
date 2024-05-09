@@ -9,14 +9,15 @@ import nu.revitalized.backendtemplate.exceptions.BadRequestException;
 import nu.revitalized.backendtemplate.exceptions.InvalidInputException;
 import nu.revitalized.backendtemplate.exceptions.RecordNotFoundException;
 import nu.revitalized.backendtemplate.exceptions.UsernameNotFoundException;
+import nu.revitalized.backendtemplate.models.Authority;
 import nu.revitalized.backendtemplate.models.User;
+import nu.revitalized.backendtemplate.repositories.AuthorityRepository;
 import nu.revitalized.backendtemplate.repositories.UserRepository;
 import nu.revitalized.backendtemplate.specifications.UserSpecification;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
+
 import static nu.revitalized.backendtemplate.helpers.CopyProperties.copyProperties;
 import static nu.revitalized.backendtemplate.security.config.SpringSecurityConfig.passwordEncoder;
 
@@ -25,11 +26,14 @@ import static nu.revitalized.backendtemplate.security.config.SpringSecurityConfi
 @Service
 public class UserService {
     private final UserRepository userRepository;
+    private final AuthorityRepository authorityRepository;
 
     public UserService(
-            UserRepository userRepository
+            UserRepository userRepository,
+            AuthorityRepository authorityRepository
     ) {
         this.userRepository = userRepository;
+        this.authorityRepository = authorityRepository;
     }
 
     // Transfer Methods
@@ -112,7 +116,7 @@ public class UserService {
         } else if (emailExists) {
             throw new InvalidInputException("Email:" + inputDto.getEmail().toLowerCase() + " is already taken");
         } else {
-            // user.addAuthority(new Authority(user.getUsername(), "ROLE_USER"));
+            user.addAuthority(new Authority(user.getUsername(), "ROLE_USER"));
             userRepository.save(user);
 
             return userToDto(user);
@@ -130,5 +134,66 @@ public class UserService {
         userRepository.deleteById(username);
 
         return "User " + username + " is deleted";
+    }
+
+    // Relation - Authorities Methods
+    public Set<Authority> getUserAuthorities(String username) {
+        User user = userRepository.findById(username)
+                .orElseThrow(() -> new UsernameNotFoundException(username));
+
+        UserDto userDto = userToDto(user);
+
+        return userDto.getAuthorities();
+    }
+
+    public UserDto assignAuthorityToUser(String username, String authority) {
+        User user = userRepository.findById(username)
+                .orElseThrow(() -> new UsernameNotFoundException(username));
+
+        Optional<Authority> optionalAuthority = authorityRepository.findAuthoritiesByAuthorityContainsIgnoreCase(authority);
+        UserDto userDto = null;
+
+        if (user != null && optionalAuthority.isPresent()) {
+            user.addAuthority(new Authority(username, authority));
+
+            userRepository.save(user);
+
+            userDto = userToDto(user);
+        }
+
+        return userDto;
+    }
+
+    public String removeAuthorityFromUser(String username, String authority) {
+        User user = userRepository.findById(username)
+                .orElseThrow(() -> new UsernameNotFoundException(username));
+
+        Optional<Authority> optionalAuthority = authorityRepository.findAuthoritiesByAuthorityContainsIgnoreCase(authority);
+
+        List<User> users = userRepository.findAll();
+        int count = 0;
+
+        if (!users.isEmpty() && optionalAuthority.isPresent()) {
+            for (User user1 : users) {
+                if (user1.getAuthorities().contains(optionalAuthority.get())) {
+                    count++;
+                }
+            }
+        }
+
+        if (count <= 1) {
+            throw new BadRequestException("At least 1 user must have the authority: " + authority.toUpperCase());
+        } else {
+            Authority toRemove = user.getAuthorities().stream()
+                    .filter(a -> a.getAuthority().equalsIgnoreCase(authority))
+                    .findFirst()
+                    .orElseThrow(() -> new InvalidInputException("user: " + username + " does not have authority "
+                            + authority.toUpperCase()));
+
+            user.removeAuthority(toRemove);
+            userRepository.save(user);
+
+            return "Authority " + authority.toUpperCase() + " is removed from user: " + username;
+        }
     }
 }
